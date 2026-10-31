@@ -2,10 +2,37 @@
 
 import { getCached, setCached, clearCache } from "./cache";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "http://localhost:8000";
+function resolveApiUrl(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "http://localhost:8000";
+
+  let url = raw.trim();
+
+  // If protocol is missing, add https://
+  if (!url.startsWith("http://") && !url.startsWith("https://")) {
+    url = `https://${url}`;
+  }
+
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, "");
+
+  // If the host is a bare internal Render service name (e.g. phoenix-backend-0sdn)
+  try {
+    const parsed = new URL(url);
+    if (!parsed.hostname.includes(".") && parsed.hostname !== "localhost") {
+      parsed.hostname = `${parsed.hostname}.onrender.com`;
+      url = parsed.origin;
+    }
+  } catch {
+    // fallback
+  }
+
+  return url;
+}
+
+const API_URL = resolveApiUrl();
 
 export const TOKEN_KEY = "phoenix.token";
 
