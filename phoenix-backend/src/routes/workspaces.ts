@@ -19,16 +19,26 @@ workspacesRouter.get(
   "/api/workspaces",
   asyncHandler(async (_req, res) => {
     const user = currentUser(res.locals);
-    const memberships = await WorkspaceMember.find({ user: user._id }).lean();
-    const wsIds = memberships.map((m) => m.workspace);
-    const workspaces = await Workspace.find({ $or: [{ _id: { $in: wsIds } }, { owner: user._id }] })
+    const memberships = await WorkspaceMember.find({
+      $or: [{ user: user._id }, { user_id: user._id }],
+    }).lean();
+    const wsIds = memberships.map((m) => m.workspace || (m as { workspace_id?: unknown }).workspace_id).filter(Boolean);
+    const workspaces = await Workspace.find({
+      $or: [{ _id: { $in: wsIds } }, { owner: user._id }, { owner_id: user._id }],
+    })
       .sort({ _id: 1 })
       .lean();
-    const roleOf = new Map(memberships.map((m) => [String(m.workspace), m.role]));
+    const roleOf = new Map(
+      memberships.map((m) => [String(m.workspace || (m as { workspace_id?: unknown }).workspace_id), m.role])
+    );
     res.json(
-      workspaces.map((ws) =>
-        wsOut(ws, roleOf.get(String(ws._id)) ?? (String(ws.owner) === String(user._id) ? "owner" : "member"))
-      )
+      workspaces.map((ws) => {
+        const ownerId = ws.owner || (ws as { owner_id?: unknown }).owner_id;
+        return wsOut(
+          ws,
+          roleOf.get(String(ws._id)) ?? (String(ownerId) === String(user._id) ? "owner" : "member")
+        );
+      })
     );
   })
 );
@@ -64,21 +74,31 @@ workspacesRouter.get(
     const user = currentUser(res.locals);
     const id = parseId(req.params.workspaceId, "Workspace");
     await requireMember(id, user);
-    const members = await WorkspaceMember.find({ workspace: id })
-      .populate<{ user: { _id: unknown; email: string; fullName: string } }>("user")
+    const members = await WorkspaceMember.find({
+      $or: [{ workspace: id }, { workspace_id: id }],
+    })
+      .populate<{ user: { _id: unknown; email: string; fullName: string; full_name?: string } }>("user")
       .sort({ _id: 1 })
       .lean();
-    const result = members
-      .filter((m) => m.user)
-      .map((m) => ({
-        user_id: String(m.user._id),
-        email: m.user.email,
-        full_name: m.user.fullName || (m.user as { full_name?: string }).full_name || "",
-        role: m.role,
-      }));
+    const result: Array<{ user_id: string; email: string; full_name: string; role: string }> = [];
+    for (const m of members) {
+      let u = m.user;
+      if (!u && (m as { user_id?: unknown }).user_id) {
+        u = (await User.findById((m as { user_id?: unknown }).user_id).lean()) as never;
+      }
+      if (u) {
+        result.push({
+          user_id: String(u._id),
+          email: u.email,
+          full_name: u.fullName || u.full_name || "",
+          role: m.role,
+        });
+      }
+    }
     const ws = await Workspace.findById(id).lean();
-    if (ws && !result.some((m) => m.user_id === String(ws.owner))) {
-      const ownerUser = await User.findById(ws.owner).lean();
+    const wsOwnerId = ws ? (ws.owner || (ws as { owner_id?: unknown }).owner_id) : null;
+    if (ws && wsOwnerId && !result.some((m) => m.user_id === String(wsOwnerId))) {
+      const ownerUser = await User.findById(wsOwnerId).lean();
       if (ownerUser) {
         result.unshift({
           user_id: String(ownerUser._id),
