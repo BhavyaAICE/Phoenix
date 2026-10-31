@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build artifacts
+dist/
+*/dist/
+.next/
+*/.next/
+out/
+*/out/
+coverage/
+*/coverage/
+*.tsbuildinfo
+*/tsconfig.tsbuildinfo
+
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+mongodb.txt
+
+# Backups & archives
+broken-phoenix-main/
+broken-phoenix-main.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db

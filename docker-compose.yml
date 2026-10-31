@@ -1,0 +1,43 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: phoenix-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      default:
+        aliases:
+          - mongodb
+
+  backend:
+    build:
+      context: ./phoenix-backend
+      dockerfile: Dockerfile
+    container_name: phoenix-backend
+    ports:
+      - "8000:8000"
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/phoenix
+      JWT_SECRET: super-secret-jwt-key-with-at-least-32-chars-long
+      PORT: 8000
+      CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./phoenix-frontend
+      dockerfile: Dockerfile
+    container_name: phoenix-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      PORT: 3000
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
