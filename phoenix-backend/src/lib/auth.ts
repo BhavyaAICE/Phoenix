@@ -34,10 +34,24 @@ export function currentUser(locals: Record<string, unknown>): CurrentUser {
 }
 
 export async function requireMember(workspaceId: Types.ObjectId, user: CurrentUser): Promise<MemberDoc> {
-  const member = await WorkspaceMember.findOne({ workspace: workspaceId, user: user._id }).lean();
-  if (member) return member as MemberDoc;
+  const member = await WorkspaceMember.findOne({
+    $and: [
+      { $or: [{ workspace: workspaceId }, { workspace_id: workspaceId }] },
+      { $or: [{ user: user._id }, { user_id: user._id }] },
+    ],
+  }).lean();
+  if (member) {
+    const doc = member as unknown as { _id: Types.ObjectId; workspace?: Types.ObjectId; workspace_id?: Types.ObjectId; user?: Types.ObjectId; user_id?: Types.ObjectId; role: Role };
+    return {
+      _id: doc._id,
+      workspace: doc.workspace || doc.workspace_id || workspaceId,
+      user: doc.user || doc.user_id || user._id,
+      role: doc.role,
+    };
+  }
   const ws = await Workspace.findById(workspaceId).lean();
-  if (ws && String(ws.owner) === String(user._id)) {
+  const ownerId = ws ? (ws.owner || (ws as { owner_id?: unknown }).owner_id) : null;
+  if (ws && String(ownerId) === String(user._id)) {
     return { _id: new Types.ObjectId(), workspace: workspaceId, user: user._id, role: "owner" };
   }
   // 404 rather than 403 so we don't leak which workspace ids exist.
@@ -55,8 +69,11 @@ export async function requireAdmin(workspaceId: Types.ObjectId, user: CurrentUse
 export async function getProjectForUser(projectId: Types.ObjectId, user: CurrentUser) {
   const project = await Project.findById(projectId).lean();
   if (!project) throw new HttpError(404, "Project not found");
+  const wsId = (project.workspace || (project as { workspace_id?: Types.ObjectId }).workspace_id) as Types.ObjectId;
+  if (!wsId) throw new HttpError(404, "Workspace not found");
+  project.workspace = wsId;
   try {
-    await requireMember(project.workspace, user);
+    await requireMember(wsId, user);
   } catch {
     throw new HttpError(404, "Project not found");
   }

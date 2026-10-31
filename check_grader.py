@@ -9,7 +9,9 @@ import sys
 def build_zip():
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as z:
-        for folder in ['phoenix-backend', 'phoenix-frontend', 'phoenix-ci']:
+        for folder in ['phoenix-backend', 'phoenix-frontend', 'phoenix-ci', '.github', 'scripts']:
+            if not os.path.exists(folder):
+                continue
             for root, dirs, files in os.walk(folder):
                 dirs[:] = [d for d in dirs if d not in ['node_modules', '.next', 'dist', 'build', 'coverage', '.git', '.vercel', '.turbo']]
                 for f in files:
@@ -28,12 +30,15 @@ def build_zip():
                         zinfo.external_attr = 0o100644 << 16
                     with open(full, 'rb') as fp:
                         z.writestr(zinfo, fp.read())
-        for doc in ['README.md', 'REPORT.md', 'docker-compose.yml', 'render.yaml']:
+        for doc in ['README.md', 'REPORT.md', 'docker-compose.yml', 'render.yaml', '.gitignore', '.dockerignore', 'DOCUMENTATION.md', 'deploy.sh', 'deploy.ps1']:
             if os.path.exists(doc):
                 zinfo = zipfile.ZipInfo(doc)
                 zinfo.date_time = time.localtime(os.path.getmtime(doc))[:6]
                 zinfo.compress_type = zipfile.ZIP_DEFLATED
-                zinfo.external_attr = 0o100644 << 16
+                if doc.endswith('.sh'):
+                    zinfo.external_attr = 0o100755 << 16
+                else:
+                    zinfo.external_attr = 0o100644 << 16
                 with open(doc, 'rb') as fp:
                     z.writestr(zinfo, fp.read())
     return buf.getvalue()

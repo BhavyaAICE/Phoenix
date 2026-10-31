@@ -57,6 +57,14 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(404).json({ detail: "Not found" });
     return;
   }
+  if (err instanceof mongoose.Error.ValidationError) {
+    res.status(422).json({ detail: err.message });
+    return;
+  }
+  if (isDuplicateKey(err)) {
+    res.status(409).json({ detail: "Conflict / duplicate key" });
+    return;
+  }
   if (
     (err instanceof SyntaxError && ("body" in err || (err as { status?: number }).status === 400)) ||
     (err as { type?: string })?.type === "entity.parse.failed"

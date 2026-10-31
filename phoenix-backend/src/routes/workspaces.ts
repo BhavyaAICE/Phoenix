@@ -103,10 +103,16 @@ workspacesRouter.post(
     const target = await User.findOne({ email: body.email.toLowerCase() }).lean();
     if (!target) throw new HttpError(404, "No user with that email");
     const ws = await Workspace.findById(id).lean();
-    if (ws && String(ws.owner) === String(target._id)) {
+    const wsOwnerId = ws ? (ws.owner || (ws as { owner_id?: unknown }).owner_id) : null;
+    if (ws && String(wsOwnerId) === String(target._id)) {
       throw new HttpError(409, "User is already a member");
     }
-    const alreadyMember = await WorkspaceMember.exists({ workspace: id, user: target._id });
+    const alreadyMember = await WorkspaceMember.exists({
+      $and: [
+        { $or: [{ workspace: id }, { workspace_id: id }] },
+        { $or: [{ user: target._id }, { user_id: target._id }] },
+      ],
+    });
     if (alreadyMember) throw new HttpError(409, "User is already a member");
     try {
       await WorkspaceMember.create({ workspace: id, user: target._id, role: body.role });

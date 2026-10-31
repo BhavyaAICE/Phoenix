@@ -62,8 +62,16 @@ tasksRouter.post(
 
     if (body.assignee_id) {
       const isMember =
-        (await WorkspaceMember.exists({ workspace: project.workspace, user: body.assignee_id })) ||
-        (await Workspace.exists({ _id: project.workspace, owner: body.assignee_id }));
+        (await WorkspaceMember.exists({
+          $and: [
+            { $or: [{ workspace: project.workspace }, { workspace_id: project.workspace }] },
+            { $or: [{ user: body.assignee_id }, { user_id: body.assignee_id }] },
+          ],
+        })) ||
+        (await Workspace.exists({
+          _id: project.workspace,
+          $or: [{ owner: body.assignee_id }, { owner_id: body.assignee_id }],
+        }));
       if (!isMember) throw new HttpError(422, "Assignee is not a workspace member");
     }
 
