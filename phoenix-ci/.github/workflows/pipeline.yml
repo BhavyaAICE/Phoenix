@@ -91,15 +91,15 @@ jobs:
           npm ci
           npm run build
           npm start &
-      - run: ./scripts/wait-for.sh http://localhost:8000/api/health 30
-      - run: ./scripts/wait-for.sh http://localhost:3000 30
+      - run: ./scripts/wait-for.sh http://localhost:8000/api/health
+      - run: ./scripts/wait-for.sh http://localhost:3000
       - run: ./scripts/smoke.sh http://localhost:8000 http://localhost:3000
 
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [e2e]
-    if: github.ref == 'refs/heads/main'
+    needs: e2e
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -108,22 +108,22 @@ jobs:
       - run: npm install --global vercel@39.3.0
       - name: Deploy backend
         working-directory: phoenix-backend
-        run: vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
       - name: Deploy frontend
         working-directory: phoenix-frontend
-        run: vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
 
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [deploy]
-    if: github.ref == 'refs/heads/main'
+    timeout-minutes: 5
+    needs: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - run: ./scripts/smoke.sh "${{ vars.BACKEND_URL }}" "${{ vars.FRONTEND_URL }}" "${{ github.sha }}"
+      - run: ./scripts/smoke.sh ${{ vars.BACKEND_URL }} ${{ vars.FRONTEND_URL }} ${{ github.sha }}

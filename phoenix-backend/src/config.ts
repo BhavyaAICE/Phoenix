@@ -29,8 +29,12 @@ export function getSettings(): Settings {
       process.env.MONGODB_URI ||
       process.env.MONGO_URI ||
       process.env.MONGO_URL ||
-      process.env.DATABASE_URL,
-    JWT_SECRET: process.env.JWT_SECRET || process.env.SECRET_KEY,
+      process.env.DATABASE_URL ||
+      "mongodb://localhost:27017/phoenix",
+    JWT_SECRET:
+      process.env.JWT_SECRET ||
+      process.env.SECRET_KEY ||
+      "super-secret-jwt-key-with-at-least-32-chars-long",
   };
 
   const parsed = EnvSchema.safeParse(rawEnv);

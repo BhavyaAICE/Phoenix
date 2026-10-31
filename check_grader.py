@@ -28,7 +28,7 @@ def build_zip():
                         zinfo.external_attr = 0o100644 << 16
                     with open(full, 'rb') as fp:
                         z.writestr(zinfo, fp.read())
-        for doc in ['README.md', 'REPORT.md', 'docker-compose.yml']:
+        for doc in ['README.md', 'REPORT.md', 'docker-compose.yml', 'render.yaml']:
             if os.path.exists(doc):
                 zinfo = zipfile.ZipInfo(doc)
                 zinfo.date_time = time.localtime(os.path.getmtime(doc))[:6]

@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: phoenix-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: phoenix-backend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: PORT
+        value: "8000"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "*"
+
+  - type: web
+    name: phoenix-frontend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: phoenix-frontend
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: PORT
+        value: "3000"
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: phoenix-backend
+          property: host
+

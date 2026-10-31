@@ -241,4 +241,35 @@ This report documents the systematic diagnosis, remediation, and verification ac
 For zero-drift local development and cloud deployment, container definitions have been prepared:
 1. `Dockerfile` for `phoenix-backend`: Multi-stage build with Node 20 alpine, compiling TypeScript to `dist/`, running unprivileged `node` user on dynamic `$PORT`.
 2. `Dockerfile` for `phoenix-frontend`: Next.js production standalone output served efficiently.
-3. `docker-compose.yml`: Coordinates `frontend`, `backend`, and `mongodb` service containers within a shared bridge network with volume caching.
+3. `docker-compose.yml`: Coordinates `frontend`, `backend`, and `mongo` service containers within a shared bridge network with volume caching and dual `mongo`/`mongodb` hostname resolution.
+
+---
+
+## 7. Multi-Platform Double Deployment Architecture (Render & Vercel)
+
+The Phoenix application is engineered for zero-downtime, multi-target double deployment across Render and Vercel:
+
+### 7.1 Render Deployment via Blueprint (`render.yaml`)
+* **Specification File:** [render.yaml](file:///c:/Users/Bhavy/Desktop/frankelstine%20web%20and%20deploy/render.yaml) defines an Infrastructure-as-Code blueprint containing both `phoenix-backend` and `phoenix-frontend` web services.
+* **Backend Web Service:**
+  * Runtime: Node 20
+  * Build Command: `npm ci && npm run build`
+  * Start Command: `npm start`
+  * Health Check Endpoint: `/api/health`
+  * Environment: `PORT=8000`, `CORS_ORIGINS=*`, `MONGODB_URI` linked to MongoDB Atlas.
+* **Frontend Web Service:**
+  * Runtime: Node 20
+  * Build Command: `npm ci && npm run build`
+  * Start Command: `npm start`
+  * Automatically resolves `NEXT_PUBLIC_API_URL` directly from the backend service host via Render service discovery (`fromService`).
+
+### 7.2 Vercel Serverless & Edge Deployment
+* **Backend:** Powered by [phoenix-backend/vercel.json](file:///c:/Users/Bhavy/Desktop/frankelstine%20web%20and%20deploy/phoenix-backend/vercel.json), routing all incoming HTTP traffic to the serverless function export at `api/index.ts`. Cold starts are minimized with connection caching, and all routes under `/api/*` and `/health` map directly to Express middleware.
+* **Frontend:** Powered by [phoenix-frontend/vercel.json](file:///c:/Users/Bhavy/Desktop/frankelstine%20web%20and%20deploy/phoenix-frontend/vercel.json) using the native `nextjs` framework preset, enabling incremental static regeneration, edge routing, and bundle optimization.
+
+### 7.3 Database Integration (MongoDB Atlas)
+* A high-availability cloud database cluster has been provisioned and integrated:
+  * Connection String: `mongodb+srv://bhavyagupta_db_user:<password>@phoenix.hvm8u1f.mongodb.net/phoenix?retryWrites=true&w=majority`
+  * Seed Data: Populated with initial workspaces (Acme Corp, Globex), users (Alice, Bob, Carol), projects (Website Revamp, Mobile App, Project Nightingale), and task batches.
+  * Verified: The backend connects seamlessly, passes `db: "ok"` checks, and recovers from transient DNS resolution restrictions using intelligent DNS fallback.
+

@@ -472,3 +472,4 @@ Outputs `SMOKE OK` upon complete end-to-end verification.
 
 ### Q: Can a task be assigned to someone outside the workspace?
 **A**: No. The backend validates that `assignee_id` exists in `WorkspaceMember` for the project's parent workspace, returning HTTP `422` otherwise.
+
