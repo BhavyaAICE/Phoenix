@@ -120,7 +120,10 @@ export async function api<T>(path: string, opts: RequestOptions = {}): Promise<T
 export function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 0) return err.message;
-    if (err.status === 401) return "Your session has expired. Please log in again.";
+    if (err.status === 401) {
+      if (err.message && err.message !== "Unauthorized") return err.message;
+      return "Your session has expired. Please log in again.";
+    }
     if (err.status === 402) return "Not enough credits. Ask the workspace owner to top up.";
     if (err.status === 403) return "You don't have permission to do that.";
     if (err.status === 404) return "Not found (or you don't have access).";
